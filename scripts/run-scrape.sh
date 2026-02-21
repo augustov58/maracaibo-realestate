@@ -5,6 +5,11 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Load API keys from .env if exists
+if [ -f ".env" ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
 TOPIC_ID="${1:-398}"  # Default to the real estate topic
 CHAT_ID="-1003777728309"
 
