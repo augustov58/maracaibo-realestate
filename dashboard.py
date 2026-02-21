@@ -480,7 +480,8 @@ def main():
             "Descripción": st.column_config.TextColumn("Descripción", width="medium"),
         },
         hide_index=True,
-        use_container_width=True
+        use_container_width=True,
+        height=500
     )
     
     # Top Opportunities (by score)
