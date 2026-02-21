@@ -5,7 +5,7 @@
 set -e
 
 MAX_POSTS="${1:-30}"
-APIFY_TOKEN="${APIFY_API_KEY:-apify_api_94b6e3psnkOX9PwMenNjdQ2nvAYjFX2adBvx}"
+APIFY_TOKEN="${APIFY_API_KEY:?APIFY_API_KEY not set}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR/../data"
 mkdir -p "$OUTPUT_DIR"

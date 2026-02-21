@@ -3,7 +3,7 @@
 # Usage: ./scrape-fb-marketplace.sh [maxListings]
 
 MAX_LISTINGS="${1:-20}"
-APIFY_TOKEN="${APIFY_API_KEY:-apify_api_94b6e3psnkOX9PwMenNjdQ2nvAYjFX2adBvx}"
+APIFY_TOKEN="${APIFY_API_KEY:?APIFY_API_KEY not set}"
 
 echo "Scraping Facebook Marketplace for Maracaibo real estate (max $MAX_LISTINGS)..."
 

@@ -4,7 +4,7 @@
 
 SEARCH_TERM="${1:-inmuebles maracaibo}"
 MAX_POSTS="${2:-20}"
-APIFY_TOKEN="${APIFY_API_KEY:-apify_api_94b6e3psnkOX9PwMenNjdQ2nvAYjFX2adBvx}"
+APIFY_TOKEN="${APIFY_API_KEY:?APIFY_API_KEY not set}"
 
 echo "Searching Instagram for: '$SEARCH_TERM' (max $MAX_POSTS posts)..."
 

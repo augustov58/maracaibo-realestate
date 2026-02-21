@@ -4,7 +4,7 @@
 
 HASHTAG="${1:-#ventamaracaibo}"
 MAX_POSTS="${2:-20}"
-APIFY_TOKEN="${APIFY_API_KEY:-apify_api_94b6e3psnkOX9PwMenNjdQ2nvAYjFX2adBvx}"
+APIFY_TOKEN="${APIFY_API_KEY:?APIFY_API_KEY not set}"
 
 # Clean hashtag (remove # for URL)
 CLEAN_TAG="${HASHTAG#\#}"
