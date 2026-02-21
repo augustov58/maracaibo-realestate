@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# Data files (except DB which we want to sync)
+data/*.json
+
+# Temp
+*.log
+.DS_Store
