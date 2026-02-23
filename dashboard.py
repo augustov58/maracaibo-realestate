@@ -20,8 +20,49 @@ from db import get_listings, get_db
 st.set_page_config(
     page_title="🏠 Maracaibo Real Estate",
     page_icon="🏠",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"  # Better for mobile
 )
+
+# Mobile-friendly CSS
+st.markdown("""
+<style>
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+        .stMetric {
+            padding: 0.5rem !important;
+        }
+        .stMetric label {
+            font-size: 0.8rem !important;
+        }
+        .stMetric [data-testid="stMetricValue"] {
+            font-size: 1.2rem !important;
+        }
+        [data-testid="stSidebar"] {
+            min-width: 100% !important;
+        }
+        .block-container {
+            padding: 1rem !important;
+        }
+        h1 {
+            font-size: 1.5rem !important;
+        }
+        h2 {
+            font-size: 1.2rem !important;
+        }
+    }
+    
+    /* Compact data table */
+    .stDataFrame {
+        font-size: 0.85rem;
+    }
+    
+    /* Better touch targets */
+    .stSelectbox, .stSlider, .stCheckbox {
+        padding: 0.25rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Preferred sectors (from USER.md)
 PREFERRED_SECTORS = [
@@ -181,6 +222,30 @@ def main():
         df['score_reasons'] = [[]] * len(df)
     
     # Sidebar filters
+    # Theme toggle
+    st.sidebar.header("⚙️ Configuración")
+    
+    # Dark/Light theme toggle (uses Streamlit's built-in theming)
+    theme = st.sidebar.toggle("🌙 Modo Oscuro", value=True, help="Cambiar entre tema claro y oscuro")
+    
+    if theme:
+        # Apply dark theme styles
+        st.markdown("""
+        <style>
+            .stApp { background-color: #0e1117; }
+            .stMarkdown, .stText { color: #fafafa; }
+        </style>
+        """, unsafe_allow_html=True)
+    else:
+        # Apply light theme styles
+        st.markdown("""
+        <style>
+            .stApp { background-color: #ffffff; }
+            .stMarkdown, .stText { color: #31333F; }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    st.sidebar.markdown("---")
     st.sidebar.header("🔍 Filtros")
     
     # Property type filter
@@ -326,7 +391,7 @@ def main():
         ))
         
         fig.update_layout(
-            height=550,
+            height=450,  # Reduced for mobile
             hovermode='closest',
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
@@ -481,7 +546,7 @@ def main():
         },
         hide_index=True,
         use_container_width=True,
-        height=500
+        height=400  # Mobile-friendly height
     )
     
     # Top Opportunities (by score)
