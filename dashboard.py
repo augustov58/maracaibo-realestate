@@ -27,39 +27,47 @@ st.set_page_config(
 # Mobile-friendly CSS
 st.markdown("""
 <style>
-    /* Mobile responsive adjustments */
+    /* General mobile adjustments */
+    .block-container {
+        padding: 1rem 0.5rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Metrics - 2 columns on mobile */
     @media (max-width: 768px) {
+        [data-testid="column"] {
+            width: 50% !important;
+            flex: 0 0 50% !important;
+            min-width: 0 !important;
+        }
         .stMetric {
-            padding: 0.5rem !important;
+            padding: 0.3rem !important;
         }
         .stMetric label {
-            font-size: 0.8rem !important;
+            font-size: 0.7rem !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .stMetric [data-testid="stMetricValue"] {
-            font-size: 1.2rem !important;
-        }
-        [data-testid="stSidebar"] {
-            min-width: 100% !important;
-        }
-        .block-container {
-            padding: 1rem !important;
+            font-size: 1rem !important;
         }
         h1 {
-            font-size: 1.5rem !important;
+            font-size: 1.3rem !important;
         }
         h2 {
-            font-size: 1.2rem !important;
+            font-size: 1.1rem !important;
         }
     }
     
     /* Compact data table */
     .stDataFrame {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
     
-    /* Better touch targets */
-    .stSelectbox, .stSlider, .stCheckbox {
-        padding: 0.25rem 0;
+    /* Charts container */
+    [data-testid="stPlotlyChart"] {
+        margin: 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -222,28 +230,16 @@ def main():
         df['score_reasons'] = [[]] * len(df)
     
     # Sidebar filters
-    # Theme toggle
+    # Theme toggle - store in session state
+    if 'dark_mode' not in st.session_state:
+        st.session_state.dark_mode = True
+    
     st.sidebar.header("⚙️ Configuración")
+    dark_mode = st.sidebar.toggle("🌙 Modo Oscuro", value=st.session_state.dark_mode)
+    st.session_state.dark_mode = dark_mode
     
-    # Dark/Light theme toggle (uses Streamlit's built-in theming)
-    theme = st.sidebar.toggle("🌙 Modo Oscuro", value=True, help="Cambiar entre tema claro y oscuro")
-    
-    if theme:
-        # Apply dark theme styles
-        st.markdown("""
-        <style>
-            .stApp { background-color: #0e1117; }
-            .stMarkdown, .stText { color: #fafafa; }
-        </style>
-        """, unsafe_allow_html=True)
-    else:
-        # Apply light theme styles
-        st.markdown("""
-        <style>
-            .stApp { background-color: #ffffff; }
-            .stMarkdown, .stText { color: #31333F; }
-        </style>
-        """, unsafe_allow_html=True)
+    # Set plotly template based on theme
+    plotly_template = "plotly_dark" if dark_mode else "plotly_white"
     
     st.sidebar.markdown("---")
     st.sidebar.header("🔍 Filtros")
@@ -300,34 +296,36 @@ def main():
     if min_beds > 0:
         filtered = filtered[(filtered['bedrooms'].isna()) | (filtered['bedrooms'] >= min_beds)]
     
-    # Summary metrics
-    col1, col2, col3, col4 = st.columns(4)
+    # Summary metrics - 2x2 grid works better on mobile
+    col1, col2 = st.columns(2)
+    col3, col4 = st.columns(2)
     
     with col1:
-        st.metric("📊 Total Listings", len(filtered))
+        st.metric("📊 Total", len(filtered))
     
     with col2:
         preferred_count = len(filtered[filtered['is_preferred']])
-        st.metric("⭐ En Zonas Preferidas", preferred_count)
+        st.metric("⭐ Preferidas", preferred_count)
     
     with col3:
         with_price = filtered[filtered['price_usd'].notna()]
         if len(with_price) > 0:
             avg_price = with_price['price_usd'].mean()
-            st.metric("💰 Precio Promedio", f"${avg_price:,.0f}")
+            st.metric("💰 Promedio", f"${avg_price:,.0f}")
         else:
-            st.metric("💰 Precio Promedio", "N/A")
+            st.metric("💰 Promedio", "N/A")
     
     with col4:
         with_sqm = filtered[filtered['price_per_sqm'].notna()]
         if len(with_sqm) > 0:
             avg_psqm = with_sqm['price_per_sqm'].mean()
-            st.metric("📐 Promedio $/m²", f"${avg_psqm:,.0f}")
+            st.metric("📐 $/m²", f"${avg_psqm:,.0f}")
         else:
-            st.metric("📐 Promedio $/m²", "N/A")
+            st.metric("📐 $/m²", "N/A")
     
     # Charts
     st.header("📈 Análisis")
+    st.caption("💰 Precio vs Tamaño • Click en un punto para detalles")
     
     # Scatter plot: Price vs Size (full width, larger)
     scatter_data = filtered[
@@ -353,28 +351,26 @@ def main():
         # Mark preferred sectors
         scatter_data['marker_symbol'] = scatter_data['is_preferred'].apply(lambda x: 'star' if x else 'circle')
         
+        # Simplified scatter - just color by type, no symbol complexity
         fig = px.scatter(
             scatter_data,
             x='sqm',
             y='price_usd',
             color='property_type',
-            symbol='is_preferred',
-            custom_data=['url', 'sector', 'bedrooms', 'price_per_sqm', 'author'],
+            custom_data=['url', 'sector', 'bedrooms', 'price_per_sqm', 'author', 'is_preferred'],
             hover_name='property_type',
             hover_data={
-                'sqm': True,
+                'sqm': ':.0f',
                 'price_usd': ':$,.0f',
                 'sector': True,
                 'bedrooms': True,
                 'price_per_sqm': ':$,.0f',
-                'is_preferred': False,
                 'property_type': False
             },
-            title="💰 Precio vs Tamaño (⭐ = Zona Preferida) — Click en un punto para ver detalles",
-            labels={'sqm': 'Tamaño (m²)', 'price_usd': 'Precio (USD)', 'property_type': 'Tipo', 'is_preferred': 'Preferida'}
+            labels={'sqm': 'm²', 'price_usd': 'USD', 'property_type': 'Tipo'}
         )
         
-        fig.update_traces(marker=dict(size=14, line=dict(width=1, color='white')))
+        fig.update_traces(marker=dict(size=12, line=dict(width=1, color='white')))
         
         # Add trend line
         z = np.polyfit(scatter_data['sqm'], scatter_data['price_usd'], 1)
@@ -385,15 +381,26 @@ def main():
             x=x_line,
             y=y_line,
             mode='lines',
-            name=f'Tendencia (${z[0]:,.0f}/m²)',
-            line=dict(color='black', width=2, dash='dash'),
+            name=f'Tendencia',
+            line=dict(color='gray', width=2, dash='dash'),
             hoverinfo='skip'
         ))
         
         fig.update_layout(
-            height=450,  # Reduced for mobile
+            height=350,
+            margin=dict(l=10, r=10, t=10, b=60),
             hovermode='closest',
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            template=plotly_template,
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.2,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=10)
+            ),
+            xaxis_title="Tamaño (m²)",
+            yaxis_title="Precio (USD)"
         )
         
         # Reset index for proper point mapping
@@ -460,17 +467,22 @@ def main():
             sector_avg['is_preferred'] = sector_avg['sector'].apply(lambda x: x in PREFERRED_SECTORS)
             
             fig = px.bar(
-                sector_avg.tail(15),
+                sector_avg.tail(10),
                 x='median_price_sqm',
                 y='sector',
                 color='is_preferred',
                 color_discrete_map={True: '#27ae60', False: '#e74c3c'},
                 orientation='h',
-                title="📍 Precio/m² por Sector (verde = preferido)",
-                labels={'median_price_sqm': '$/m² (mediana)', 'sector': 'Sector'},
+                labels={'median_price_sqm': '$/m²', 'sector': ''},
                 hover_data=['count']
             )
-            fig.update_layout(height=400, showlegend=False)
+            fig.update_layout(
+                height=300,
+                showlegend=False,
+                template=plotly_template,
+                margin=dict(l=10, r=10, t=10, b=10),
+                title=dict(text="📍 $/m² por Sector", font=dict(size=14))
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No hay datos suficientes para el gráfico")
@@ -490,10 +502,15 @@ def main():
                 x='property_type',
                 y='price_per_sqm',
                 color='property_type',
-                title="📊 Distribución $/m² por Tipo",
-                labels={'price_per_sqm': '$/m²', 'property_type': 'Tipo'}
+                labels={'price_per_sqm': '$/m²', 'property_type': ''}
             )
-            fig.update_layout(height=400, showlegend=False)
+            fig.update_layout(
+                height=300,
+                showlegend=False,
+                template=plotly_template,
+                margin=dict(l=10, r=10, t=10, b=10),
+                title=dict(text="📊 $/m² por Tipo", font=dict(size=14))
+            )
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No hay datos suficientes para el gráfico")
