@@ -273,7 +273,7 @@ export default async function PropertyPage({
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Al contactar, menciona que viste esta propiedad en Mi Casa Mcbo
+                  Al contactar, menciona que viste esta propiedad en Mi Casa Venezuela
                 </p>
               </CardContent>
             </Card>

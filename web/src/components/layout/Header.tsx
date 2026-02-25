@@ -23,7 +23,7 @@ export function Header() {
         <Link href="/" className="flex items-center space-x-2">
           <Home className="h-6 w-6 text-primary" />
           <span className="text-xl font-bold">
-            Mi Casa <span className="text-primary">Mcbo</span>
+            Mi Casa <span className="text-primary">Venezuela</span>
           </span>
         </Link>
 
