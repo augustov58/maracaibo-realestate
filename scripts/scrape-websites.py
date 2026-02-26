@@ -109,11 +109,32 @@ def extract_number(text, pattern):
     return None
 
 
+def extract_images(card, base_url):
+    """Extract image URLs from a card element."""
+    images = []
+    for img in card.find_all('img'):
+        src = img.get('src') or img.get('data-src') or img.get('data-lazy-src')
+        if src:
+            # Skip placeholder/icon images
+            if any(x in src.lower() for x in ['placeholder', 'icon', 'logo', 'spinner', 'loading', 'avatar']):
+                continue
+            # Handle relative URLs
+            if src.startswith('//'):
+                src = 'https:' + src
+            elif src.startswith('/'):
+                src = base_url + src
+            elif not src.startswith('http'):
+                src = base_url + '/' + src
+            images.append(src)
+    return images[:10]  # Limit to 10 images
+
+
 def parse_regaladogroup(html):
     """Parse listings from Regalado Group website."""
     soup = BeautifulSoup(html, 'lxml')
     listings = []
     seen_urls = set()
+    base_url = 'https://regaladogroup.net'
     
     # Find all listing cards (okno_R class contains the full card)
     for card in soup.find_all('div', class_='okno_R'):
@@ -130,8 +151,11 @@ def parse_regaladogroup(html):
         # Get all text from the card
         text = card.get_text(separator=' ', strip=True)
         
+        # Extract images
+        images = extract_images(card, base_url)
+        
         # Extract data
-        url = href if href.startswith('http') else f"https://regaladogroup.net{href}"
+        url = href if href.startswith('http') else f"{base_url}{href}"
         sqm = extract_number(text, r'(\d+(?:[.,]\d+)?)\s*mts?2')
         bedrooms = extract_number(text, r'Habitaciones:\s*(\d+)')
         # Price format: "130,000.00 $" or "$ 130,000.00"
@@ -164,6 +188,7 @@ def parse_regaladogroup(html):
             'price': price,
             'property_type': property_type,
             'listing_type': listing_type,
+            'images': images,
         }
         
         listings.append(listing)
@@ -176,6 +201,7 @@ def parse_angelpinton(html):
     soup = BeautifulSoup(html, 'lxml')
     listings = []
     seen_urls = set()
+    base_url = 'https://www.angelpinton.com'
     
     # Find all property cards (article.c49-property-card)
     for card in soup.find_all('article', class_='c49-property-card'):
@@ -195,8 +221,11 @@ def parse_angelpinton(html):
         
         text = card.get_text(separator=' ', strip=True)
         
+        # Extract images
+        images = extract_images(card, base_url)
+        
         # Extract data
-        url = href if href.startswith('http') else f"https://www.angelpinton.com{href}"
+        url = href if href.startswith('http') else f"{base_url}{href}"
         sqm = extract_number(text, r'(\d+)\s*m²')
         bedrooms = extract_number(text, r'(\d+)\s*dorms?\.?')
         bathrooms = extract_number(text, r'(\d+)\s*bañ')
@@ -220,6 +249,7 @@ def parse_angelpinton(html):
             'bathrooms': bathrooms,
             'price': price,
             'property_type': property_type,
+            'images': images,
         }
         
         listings.append(listing)
@@ -334,6 +364,7 @@ def parse_eliterealestate(html):
     soup = BeautifulSoup(html, 'lxml')
     listings = []
     seen_urls = set()
+    base_url = 'https://eliterealestateca.com'
     
     # Find all property links (format: /propiedad/xxx/)
     for link in soup.find_all('a', href=re.compile(r'/propiedad/[^/]+/')):
@@ -350,6 +381,9 @@ def parse_eliterealestate(html):
         container = link.find_parent(['article', 'div'])
         if not container:
             container = link
+        
+        # Extract images
+        images = extract_images(container, base_url)
         
         text = container.get_text(separator=' ', strip=True)
         title = link.get_text(strip=True)
@@ -399,6 +433,7 @@ def parse_eliterealestate(html):
             'price': price,
             'property_type': property_type,
             'location': location,
+            'images': images,
         }
         
         listings.append(listing)
