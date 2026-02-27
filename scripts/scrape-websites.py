@@ -153,6 +153,19 @@ def extract_images(card, base_url):
     return images[:10]  # Limit to 10 images
 
 
+def convert_regalado_to_fullsize(url):
+    """Convert Regalado thumbnail URL to full-size image URL.
+    
+    Thumbnails have suffix like _100_100_2_.jpg or _200_265_2_.jpg
+    Full size images have no suffix, just .jpg
+    """
+    # Pattern: GUID_imagename_WIDTH_HEIGHT_2_.jpg -> GUID_imagename.jpg
+    match = re.search(r'(.+?)_\d+_\d+_2_\.(\w+)$', url)
+    if match:
+        return f"{match.group(1)}.{match.group(2)}"
+    return url
+
+
 def fetch_detail_images(url, source):
     """Fetch all images from a property detail page."""
     html = fetch_page(url)
@@ -164,23 +177,38 @@ def fetch_detail_images(url, source):
     
     # Different selectors based on source
     if source == 'regaladogroup':
-        # Regalado uses a gallery with data-src for lazy loading
-        for img in soup.find_all('img', {'data-src': True}):
-            src = img.get('data-src')
+        # Regalado embeds image URLs in JavaScript as imgUrl variables
+        # Also in img tags with thumbnail sizes
+        # Extract all photo URLs and convert to full-size
+        
+        # Method 1: Find imgUrl assignments in JavaScript
+        for script in soup.find_all('script'):
+            if script.string:
+                for match in re.finditer(r'imgUrl\s*=\s*"([^"]+photos/[^"]+)"', script.string):
+                    img_url = match.group(1)
+                    full_url = convert_regalado_to_fullsize(img_url)
+                    if full_url not in images:
+                        images.append(full_url)
+        
+        # Method 2: Find img tags with photos in src
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
             if src and 'photos' in src:
                 if not src.startswith('http'):
                     src = 'https://regaladogroup.net' + src
-                images.append(src)
-        # Also check regular img tags in gallery
-        gallery = soup.find('div', class_=re.compile(r'gallery|slider|carousel', re.I))
-        if gallery:
-            for img in gallery.find_all('img'):
-                src = img.get('src') or img.get('data-src')
-                if src and 'photos' in src:
-                    if not src.startswith('http'):
-                        src = 'https://regaladogroup.net' + src
-                    if src not in images:
-                        images.append(src)
+                full_url = convert_regalado_to_fullsize(src)
+                if full_url not in images:
+                    images.append(full_url)
+        
+        # Method 3: Find fancybox/lightbox links
+        for link in soup.find_all('a', href=re.compile(r'photos/')):
+            href = link.get('href')
+            if href:
+                if not href.startswith('http'):
+                    href = 'https://regaladogroup.net' + href
+                full_url = convert_regalado_to_fullsize(href)
+                if full_url not in images:
+                    images.append(full_url)
     
     elif source == 'angelpinton':
         # Angel Pinton has gallery with multiple images

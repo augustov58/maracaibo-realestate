@@ -54,7 +54,8 @@ done
 HOUR=$(date +%H)
 if [ "$HOUR" == "08" ]; then
     echo "--- Scraping Real Estate Websites ---"
-    python3 ./scripts/scrape-websites.py --output ./data 2>&1 || echo "Warning: website scrape failed"
+    # --fetch-details gets full-size images from detail pages (not thumbnails)
+    python3 ./scripts/scrape-websites.py --output ./data --fetch-details --max-details 100 2>&1 || echo "Warning: website scrape failed"
 fi
 
 # Process all JSON files to database
