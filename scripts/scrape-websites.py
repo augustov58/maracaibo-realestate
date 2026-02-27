@@ -153,6 +153,89 @@ def extract_images(card, base_url):
     return images[:10]  # Limit to 10 images
 
 
+def fetch_detail_images(url, source):
+    """Fetch all images from a property detail page."""
+    html = fetch_page(url)
+    if not html:
+        return []
+    
+    soup = BeautifulSoup(html, 'lxml')
+    images = []
+    
+    # Different selectors based on source
+    if source == 'regaladogroup':
+        # Regalado uses a gallery with data-src for lazy loading
+        for img in soup.find_all('img', {'data-src': True}):
+            src = img.get('data-src')
+            if src and 'photos' in src:
+                if not src.startswith('http'):
+                    src = 'https://regaladogroup.net' + src
+                images.append(src)
+        # Also check regular img tags in gallery
+        gallery = soup.find('div', class_=re.compile(r'gallery|slider|carousel', re.I))
+        if gallery:
+            for img in gallery.find_all('img'):
+                src = img.get('src') or img.get('data-src')
+                if src and 'photos' in src:
+                    if not src.startswith('http'):
+                        src = 'https://regaladogroup.net' + src
+                    if src not in images:
+                        images.append(src)
+    
+    elif source == 'angelpinton':
+        # Angel Pinton has gallery with multiple images
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
+            if src and '/inmuebles/' in src and 'thumbnail' not in src.lower():
+                if not src.startswith('http'):
+                    src = 'https://www.angelpinton.com' + src
+                if src not in images:
+                    images.append(src)
+    
+    elif source == 'eliterealestate':
+        # Elite Real Estate gallery
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
+            if src and any(x in src for x in ['/wp-content/uploads/', '/property/']):
+                if not src.startswith('http'):
+                    src = 'https://eliterealestateca.com' + src
+                if src not in images and 'placeholder' not in src.lower():
+                    images.append(src)
+    
+    elif source == 'zuhause':
+        # Zuhause gallery
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
+            if src and '/propiedades/' in src:
+                if not src.startswith('http'):
+                    src = 'https://zuhausebienesraices.com' + src
+                if src not in images:
+                    images.append(src)
+    
+    elif source == 'nexthouse':
+        # Next House gallery
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
+            if src and '/inmuebles/' in src:
+                if not src.startswith('http'):
+                    src = 'https://www.nexthouseinmobiliaria.com' + src
+                if src not in images:
+                    images.append(src)
+    
+    # Fallback: get all reasonable images
+    if not images:
+        for img in soup.find_all('img'):
+            src = img.get('src') or img.get('data-src')
+            if src and src.startswith('http'):
+                # Skip common non-property images
+                if any(x in src.lower() for x in ['logo', 'icon', 'avatar', 'placeholder', 'spinner', 'loading', 'facebook', 'twitter', 'instagram', 'whatsapp']):
+                    continue
+                if src not in images:
+                    images.append(src)
+    
+    return images[:15]  # Limit to 15 images per property
+
+
 def parse_regaladogroup(html):
     """Parse listings from Regalado Group website."""
     soup = BeautifulSoup(html, 'lxml')
@@ -528,6 +611,45 @@ def save_results(listings, output_dir):
     return filepath
 
 
+def enrich_with_detail_images(listings, max_fetch=50):
+    """Fetch additional images from detail pages for listings with few images."""
+    enriched = 0
+    
+    for listing in listings:
+        # Skip if already has multiple images
+        if len(listing.get('images', [])) >= 3:
+            continue
+        
+        # Limit how many detail pages we fetch (rate limiting)
+        if enriched >= max_fetch:
+            print(f"  Reached max detail fetches ({max_fetch}), stopping enrichment")
+            break
+        
+        url = listing.get('url')
+        source = listing.get('source')
+        
+        if not url or not source:
+            continue
+        
+        print(f"  Fetching detail images for: {url[:60]}...")
+        detail_images = fetch_detail_images(url, source)
+        
+        if detail_images:
+            # Merge with existing images, avoiding duplicates
+            existing = set(listing.get('images', []))
+            for img in detail_images:
+                if img not in existing:
+                    listing['images'] = listing.get('images', []) + [img]
+                    existing.add(img)
+            enriched += 1
+            print(f"    Added {len(detail_images)} images (total: {len(listing['images'])})")
+        
+        time.sleep(1)  # Rate limiting
+    
+    print(f"  Enriched {enriched} listings with detail images")
+    return listings
+
+
 if __name__ == '__main__':
     import argparse
     
@@ -536,6 +658,10 @@ if __name__ == '__main__':
                        help='Website to scrape (default: all)')
     parser.add_argument('--output', default='./data',
                        help='Output directory (default: ./data)')
+    parser.add_argument('--fetch-details', action='store_true',
+                       help='Fetch additional images from detail pages (slower but more complete)')
+    parser.add_argument('--max-details', type=int, default=50,
+                       help='Max number of detail pages to fetch (default: 50)')
     args = parser.parse_args()
     
     os.makedirs(args.output, exist_ok=True)
@@ -544,6 +670,11 @@ if __name__ == '__main__':
         listings = scrape_all_websites()
     else:
         listings = scrape_website(args.site)
+    
+    # Optionally enrich with detail page images
+    if args.fetch_details and listings:
+        print("\nFetching detail page images...")
+        listings = enrich_with_detail_images(listings, max_fetch=args.max_details)
     
     if listings:
         save_results(listings, args.output)
