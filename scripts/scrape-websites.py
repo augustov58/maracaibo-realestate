@@ -95,14 +95,38 @@ def extract_number(text, pattern):
     if match:
         try:
             num_str = match.group(1)
-            # Handle prices with comma thousands separators and decimal point
-            # e.g., "18,000.00" -> 18000.00, "1,200,000" -> 1200000
+            # Handle Latin American number formats:
+            # - Comma as decimal separator: "811,91" -> 811.91
+            # - Period as thousands separator: "1.200" -> 1200
+            # - US format: "18,000.00" -> 18000.00
+            
             if ',' in num_str and '.' in num_str:
-                # Has both comma and period - comma is thousands, period is decimal
-                num_str = num_str.replace(',', '')
+                # Has both - determine which is decimal based on position
+                last_comma = num_str.rfind(',')
+                last_period = num_str.rfind('.')
+                if last_comma > last_period:
+                    # Comma is decimal (European/Latin: 1.234,56)
+                    num_str = num_str.replace('.', '').replace(',', '.')
+                else:
+                    # Period is decimal (US: 1,234.56)
+                    num_str = num_str.replace(',', '')
             elif ',' in num_str:
-                # Only comma - it's a thousands separator
-                num_str = num_str.replace(',', '')
+                # Only comma - check if it's decimal or thousands
+                parts = num_str.split(',')
+                if len(parts) == 2 and len(parts[1]) <= 2:
+                    # Likely decimal: "811,91" -> 811.91
+                    num_str = num_str.replace(',', '.')
+                else:
+                    # Likely thousands: "1,200" -> 1200
+                    num_str = num_str.replace(',', '')
+            elif '.' in num_str:
+                # Only period - check if it's decimal or thousands
+                parts = num_str.split('.')
+                if len(parts) == 2 and len(parts[1]) == 3 and len(parts[0]) <= 3:
+                    # Likely thousands separator: "1.200" -> 1200
+                    num_str = num_str.replace('.', '')
+                # Otherwise keep as decimal
+            
             return float(num_str)
         except:
             pass
