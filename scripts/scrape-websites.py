@@ -177,38 +177,19 @@ def fetch_detail_images(url, source):
     
     # Different selectors based on source
     if source == 'regaladogroup':
-        # Regalado embeds image URLs in JavaScript as imgUrl variables
-        # Also in img tags with thumbnail sizes
-        # Extract all photo URLs and convert to full-size
+        # Regalado embeds image URLs in various places - use regex on raw HTML for reliability
+        # Pattern: photos/GUID_imagename_SIZE_SIZE_2_.jpg or photos/GUID_imagename.jpg
+        seen = set()
         
-        # Method 1: Find imgUrl assignments in JavaScript
-        for script in soup.find_all('script'):
-            if script.string:
-                for match in re.finditer(r'imgUrl\s*=\s*"([^"]+photos/[^"]+)"', script.string):
-                    img_url = match.group(1)
-                    full_url = convert_regalado_to_fullsize(img_url)
-                    if full_url not in images:
-                        images.append(full_url)
-        
-        # Method 2: Find img tags with photos in src
-        for img in soup.find_all('img'):
-            src = img.get('src') or img.get('data-src')
-            if src and 'photos' in src:
-                if not src.startswith('http'):
-                    src = 'https://regaladogroup.net' + src
-                full_url = convert_regalado_to_fullsize(src)
-                if full_url not in images:
-                    images.append(full_url)
-        
-        # Method 3: Find fancybox/lightbox links
-        for link in soup.find_all('a', href=re.compile(r'photos/')):
-            href = link.get('href')
-            if href:
-                if not href.startswith('http'):
-                    href = 'https://regaladogroup.net' + href
-                full_url = convert_regalado_to_fullsize(href)
-                if full_url not in images:
-                    images.append(full_url)
+        for match in re.finditer(r'photos/([A-F0-9-]+_[^"\'>\s]+)\.(jpg|png|jpeg)', html, re.I):
+            path = match.group(1)
+            ext = match.group(2)
+            # Remove size suffix to get full-size image
+            clean_path = re.sub(r'_\d+_\d+_2_$', '', path)
+            full_url = f'https://regaladogroup.net/components/com_realestatemanager/photos/{clean_path}.{ext}'
+            if full_url not in seen:
+                seen.add(full_url)
+                images.append(full_url)
     
     elif source == 'angelpinton':
         # Angel Pinton has gallery with multiple images
