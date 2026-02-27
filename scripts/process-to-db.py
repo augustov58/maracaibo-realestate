@@ -252,7 +252,7 @@ def process_instagram_post(post):
         'author': post.get('ownerUsername', ''),
         'timestamp': timestamp,
         'listing_date': listing_date,
-        'images': [post.get('displayUrl')] if post.get('displayUrl') else [],
+        'images': post.get('images') or ([post.get('displayUrl')] if post.get('displayUrl') else []),
         'likes': post.get('likesCount', 0),
     }
 
