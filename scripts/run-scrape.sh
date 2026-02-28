@@ -62,6 +62,14 @@ fi
 echo "Processing to database..."
 python3 ./scripts/process-to-db.py
 
+# Process Instagram images - download and upload to Supabase Storage
+echo "Processing Instagram images..."
+if [ -n "$SUPABASE_SERVICE_KEY" ]; then
+    python3 ./scripts/process-instagram-images.py --limit 20 2>&1 || echo "Warning: image processing failed"
+else
+    echo "Skipping image processing (SUPABASE_SERVICE_KEY not set)"
+fi
+
 # Get new listings count
 NEW_COUNT=$(python3 -c "
 import sys
