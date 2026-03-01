@@ -21,6 +21,8 @@ def get_db():
 def init_db():
     """Initialize database schema"""
     conn = get_db()
+    
+    # Create tables first (without sector index yet)
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS listings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,6 +61,17 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_listings_created ON listings(created_at);
         CREATE INDEX IF NOT EXISTS idx_sent_group ON sent_to_groups(group_id);
     """)
+    
+    # Migration: add sector column if missing
+    try:
+        conn.execute("SELECT sector FROM listings LIMIT 1")
+    except sqlite3.OperationalError:
+        conn.execute("ALTER TABLE listings ADD COLUMN sector TEXT")
+        print("Added 'sector' column to listings table")
+    
+    # Now create sector index (after migration ensures column exists)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_listings_sector ON listings(sector)")
+    
     conn.commit()
     conn.close()
     print(f"Database initialized: {DB_PATH}")
@@ -73,8 +86,8 @@ def add_listing(listing: dict) -> bool:
             INSERT INTO listings (
                 source, source_id, url, text, author, timestamp,
                 images, likes, price_usd, bedrooms, bathrooms,
-                sqm, property_type, location, listing_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                sqm, property_type, location, sector, listing_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             listing.get('source'),
             listing.get('id') or listing.get('source_id'),
@@ -90,6 +103,7 @@ def add_listing(listing: dict) -> bool:
             listing.get('sqm'),
             listing.get('property_type'),
             listing.get('location'),
+            listing.get('sector'),
             listing.get('listing_date')
         ))
         conn.commit()
