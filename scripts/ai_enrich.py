@@ -39,7 +39,7 @@ KNOWN_SECTORS = [
     "San Jacinto", "Santa Fe", "Santa Lucía", "Santa María", "Santa Rita",
     "Sector Veritas", "Sierra Maestra", "Tierra Negra", "Urb. La Trinidad",
     "Valle Frío", "Villa Antoanona", "Zapara", "Zona Industrial", "Zona Norte",
-    "Av. 72", "Av. Universidad", "Padilla", "Chiquinquirá"
+    "Av. 72", "Calle 72", "Av. Universidad", "Padilla", "Chiquinquirá"
 ]
 
 # Mapping for normalization
@@ -83,8 +83,8 @@ SECTOR_ALIASES = {
     "zona norte": "Zona Norte",
     "av 72": "Av. 72",
     "avenida 72": "Av. 72",
-    "calle 72": "Av. 72",
-    "c 72": "Av. 72",
+    "calle 72": "Calle 72",
+    "c 72": "Calle 72",
     "santa rita": "Santa Rita",
     "santarita": "Santa Rita",
     "san francisco": "San Francisco",
