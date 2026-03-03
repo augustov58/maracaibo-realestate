@@ -6,6 +6,7 @@ import path from 'path';
 const DB_PATH = path.join(process.cwd(), '..', 'data', 'listings.db');
 
 interface QueryParams {
+  q?: string;  // Full-text search query
   property_type?: string;
   sector?: string;
   min_price?: number;
@@ -29,6 +30,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     
     const params: QueryParams = {
+      q: searchParams.get('q') || undefined,  // Full-text search
       property_type: searchParams.get('property_type') || undefined,
       sector: searchParams.get('sector') || undefined,
       min_price: searchParams.get('min_price') ? parseInt(searchParams.get('min_price')!) : undefined,
@@ -49,6 +51,13 @@ export async function GET(request: NextRequest) {
     
     // Exclude rentals (price < 1000)
     whereClause += ' AND (price_usd IS NULL OR price_usd >= 1000)';
+    
+    // Full-text search in title, text (description), and location
+    if (params.q) {
+      const searchTerm = `%${params.q}%`;
+      whereClause += ' AND (title LIKE ? OR text LIKE ? OR location LIKE ?)';
+      queryParams.push(searchTerm, searchTerm, searchTerm);
+    }
     
     if (params.property_type) {
       whereClause += ' AND property_type = ?';

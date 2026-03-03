@@ -19,6 +19,7 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
   const searchParams = useSearchParams();
   
   const [filters, setFilters] = useState({
+    q: searchParams.get('q') || '',  // Full-text search
     property_type: searchParams.get('property_type') || '',
     sector: searchParams.get('sector') || '',
     min_price: searchParams.get('min_price') || '',
@@ -36,6 +37,7 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
   const applyFilters = () => {
     const params = new URLSearchParams();
     
+    if (filters.q) params.set('q', filters.q);  // Full-text search
     if (filters.property_type) params.set('property_type', filters.property_type);
     if (filters.sector) params.set('sector', filters.sector);
     if (priceRange[0] > 0) params.set('min_price', priceRange[0].toString());
@@ -49,6 +51,7 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
 
   const clearFilters = () => {
     setFilters({
+      q: '',
       property_type: '',
       sector: '',
       min_price: '',
@@ -68,6 +71,14 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
   if (compact) {
     return (
       <div className="flex flex-col sm:flex-row gap-3 p-4 bg-background rounded-xl shadow-lg border max-w-4xl mx-auto">
+        <Input
+          type="text"
+          placeholder="Buscar: piscina, calle 72..."
+          className="w-full sm:w-[200px]"
+          value={filters.q}
+          onChange={(e) => setFilters(prev => ({ ...prev, q: e.target.value }))}
+        />
+        
         <Select
           value={filters.property_type}
           onValueChange={(v) => setFilters(prev => ({ ...prev, property_type: v }))}
@@ -187,6 +198,7 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
 }
 
 type FiltersState = {
+  q: string;
   property_type: string;
   sector: string;
   min_price: string;
@@ -206,6 +218,20 @@ interface FilterContentProps {
 function FilterContent({ filters, setFilters, priceRange, setPriceRange }: FilterContentProps) {
   return (
     <div className="space-y-6">
+      {/* Text Search */}
+      <div>
+        <label className="text-sm font-medium mb-2 block">Buscar en descripción</label>
+        <Input
+          type="text"
+          placeholder="ej: piscina, calle 72, remodelado..."
+          value={filters.q}
+          onChange={(e) => setFilters(prev => ({ ...prev, q: e.target.value }))}
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          Busca palabras en título, descripción y ubicación
+        </p>
+      </div>
+
       {/* Property Type */}
       <div>
         <label className="text-sm font-medium mb-2 block">Tipo de propiedad</label>

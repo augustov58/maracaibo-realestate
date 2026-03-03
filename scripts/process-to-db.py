@@ -9,6 +9,14 @@ import re
 from pathlib import Path
 from db import init_db, add_listing, get_stats
 
+# Import AI enrichment module
+try:
+    from ai_enrich import enrich_with_ai, normalize_sector, extract_sector_from_text
+    HAS_AI_ENRICH = True
+except ImportError:
+    HAS_AI_ENRICH = False
+    print("Warning: ai_enrich module not available, skipping AI enrichment")
+
 # Keywords that indicate a property listing
 PROPERTY_KEYWORDS = [
     'venta', 'vendo', 'se vende', 'en venta',
@@ -362,6 +370,13 @@ def process_file(json_path: Path) -> tuple:
         processed['sqm'] = processed.get('sqm') or extract_sqm(text)
         processed['property_type'] = processed.get('property_type') or extract_property_type(text)
         processed['location'] = processed.get('location') or extract_location(text)
+        
+        # AI enrichment: extract sector and clean description
+        if HAS_AI_ENRICH:
+            processed = enrich_with_ai(processed)
+            # Update text with cleaned description if available
+            if processed.get('description_clean'):
+                processed['text'] = processed['description_clean']
         
         # Skip Instagram posts with no useful listing data (likely agent promos)
         if processed.get('source') == 'instagram':
