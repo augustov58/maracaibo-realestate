@@ -3,11 +3,48 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, Home, Search, Heart, Bell, User } from 'lucide-react';
-import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Menu, Home, Search, Heart, Bell, User, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AuthDialog } from '@/components/auth/AuthDialog';
+import { createClient } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    
+    // Get initial user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
 
   const navItems = [
     { href: '/', label: 'Inicio', icon: Home },
@@ -40,14 +77,50 @@ export function Header() {
           ))}
         </nav>
 
-        {/* Desktop Auth Buttons */}
+        {/* Desktop Auth */}
         <div className="hidden md:flex items-center space-x-2">
-          <Button variant="ghost" size="sm">
-            Iniciar Sesión
-          </Button>
-          <Button size="sm">
-            Registrarse
-          </Button>
+          {loading ? (
+            <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <User className="h-4 w-4" />
+                  <span className="max-w-[120px] truncate">
+                    {user.email?.split('@')[0]}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link href="/favoritos" className="cursor-pointer">
+                    <Heart className="h-4 w-4 mr-2" />
+                    Favoritos
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/alertas" className="cursor-pointer">
+                    <Bell className="h-4 w-4 mr-2" />
+                    Mis Alertas
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Cerrar Sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <>
+              <AuthDialog 
+                trigger={<Button variant="ghost" size="sm">Iniciar Sesión</Button>}
+              />
+              <AuthDialog 
+                trigger={<Button size="sm">Registrarse</Button>}
+              />
+            </>
+          )}
         </div>
 
         {/* Mobile Menu */}
@@ -75,13 +148,32 @@ export function Header() {
                 );
               })}
               <div className="pt-4 border-t space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <User className="h-4 w-4 mr-2" />
-                  Iniciar Sesión
-                </Button>
-                <Button className="w-full">
-                  Registrarse
-                </Button>
+                {user ? (
+                  <>
+                    <div className="px-2 py-1 text-sm text-muted-foreground">
+                      {user.email}
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start"
+                      onClick={() => { handleLogout(); setIsOpen(false); }}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Cerrar Sesión
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <AuthDialog 
+                      trigger={
+                        <Button variant="outline" className="w-full justify-start">
+                          <User className="h-4 w-4 mr-2" />
+                          Iniciar Sesión
+                        </Button>
+                      }
+                    />
+                  </>
+                )}
               </div>
             </nav>
           </SheetContent>
