@@ -21,7 +21,6 @@ PROFILES=(
     "regaladogroup"
     "angelpintoninmobiliaria"
     "nexthouseinmobiliaria"
-    "zuhausebienesraices"
 )
 
 # Hashtags to search
