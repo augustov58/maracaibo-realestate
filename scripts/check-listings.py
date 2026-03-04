@@ -107,9 +107,24 @@ def update_listing_status(listing_id, status):
     conn.commit()
     conn.close()
 
-def update_listing_price(listing_id, new_price):
-    """Update listing price and record in history"""
+def update_listing_price(listing_id, old_price, new_price):
+    """Update listing price, preserve original, and record in history"""
     conn = get_db()
+    
+    # Check if original_price is already set
+    cur = conn.execute(
+        "SELECT original_price FROM listings WHERE id = ?",
+        (listing_id,)
+    )
+    row = cur.fetchone()
+    current_original = row[0] if row else None
+    
+    # If original_price not set, preserve the old price as original
+    if not current_original and old_price:
+        conn.execute(
+            "UPDATE listings SET original_price = ? WHERE id = ?",
+            (old_price, listing_id)
+        )
     
     # Update current price
     conn.execute(
@@ -171,13 +186,13 @@ def main():
             print(f"💰 PRICE DROP - {message}")
             price_drops.append((listing, new_price, message))
             if not args.dry_run:
-                update_listing_price(listing['id'], new_price)
+                update_listing_price(listing['id'], listing.get('price_usd'), new_price)
                 
         elif status == 'price_increase':
             print(f"📈 {message}")
             price_increases.append((listing, new_price, message))
             if not args.dry_run:
-                update_listing_price(listing['id'], new_price)
+                update_listing_price(listing['id'], listing.get('price_usd'), new_price)
                 
         elif status == 'active':
             print("OK")
