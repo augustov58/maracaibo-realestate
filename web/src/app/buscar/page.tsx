@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PropertyCard } from '@/components/property/PropertyCard';
 import { SearchFilters } from '@/components/search/SearchFilters';
+import { CreateAlertDialog } from '@/components/search/CreateAlertDialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -70,6 +71,9 @@ function SearchContent() {
             </div>
             
             <div className="flex items-center gap-3">
+              {/* Create Alert */}
+              <CreateAlertDialog />
+              
               {/* View Toggle */}
               <div className="flex border rounded-md">
                 <Button 
