@@ -5,15 +5,6 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-# Setup logging
-LOG_DIR="./logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="$LOG_DIR/scraper-$(date +%Y%m%d).log"
-
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
-}
-
 # Load API keys from .env if exists
 if [ -f ".env" ]; then
     export $(grep -v '^#' .env | xargs)
@@ -22,7 +13,7 @@ fi
 TOPIC_ID="${1:-398}"  # Default to the real estate topic
 CHAT_ID="-1003777728309"
 
-log "=== Maracaibo Real Estate Scrape START ==="
+echo "=== Maracaibo Real Estate Scrape $(date) ==="
 
 # Instagram profiles to scrape (real estate agents)
 PROFILES=(
@@ -43,40 +34,39 @@ HASHTAGS=(
 )
 
 # Scrape profiles first (5 posts each)
-log "--- Scraping Instagram Profiles ---"
+echo "--- Scraping Instagram Profiles ---"
 for profile in "${PROFILES[@]}"; do
-    log "Scraping @$profile..."
-    ./scripts/scrape-ig-profile.sh "$profile" 5 2>&1 | tee -a "$LOG_FILE" || log "Warning: scrape failed for @$profile"
+    echo "Scraping @$profile..."
+    ./scripts/scrape-ig-profile.sh "$profile" 5 2>&1 || echo "Warning: scrape failed for @$profile"
     sleep 3
 done
 
 # Scrape hashtags (5 posts each)
-log "--- Scraping Instagram Hashtags ---"
+echo "--- Scraping Instagram Hashtags ---"
 for tag in "${HASHTAGS[@]}"; do
-    log "Scraping #$tag..."
-    ./scripts/scrape-ig.sh "#$tag" 5 2>&1 | tee -a "$LOG_FILE" || log "Warning: scrape failed for #$tag"
+    echo "Scraping #$tag..."
+    ./scripts/scrape-ig.sh "#$tag" 5 2>&1 || echo "Warning: scrape failed for #$tag"
     sleep 3
 done
 
-# Scrape websites (runs every cycle - 3x daily)
-log "--- Scraping Real Estate Websites ---"
-python3 ./scripts/scrape-websites.py --output ./data --fetch-details --max-details 100 2>&1 | tee -a "$LOG_FILE"
-if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    log "ERROR: Website scrape failed with exit code ${PIPESTATUS[0]}"
-else
-    log "Website scrape completed successfully"
+# Scrape websites (run once per day, not every scrape cycle)
+HOUR=$(date +%H)
+if [ "$HOUR" == "08" ]; then
+    echo "--- Scraping Real Estate Websites ---"
+    # --fetch-details gets full-size images from detail pages (not thumbnails)
+    python3 ./scripts/scrape-websites.py --output ./data --fetch-details --max-details 100 2>&1 || echo "Warning: website scrape failed"
 fi
 
 # Process all JSON files to database
-log "Processing to database..."
-python3 ./scripts/process-to-db.py 2>&1 | tee -a "$LOG_FILE"
+echo "Processing to database..."
+python3 ./scripts/process-to-db.py
 
 # Process Instagram images - download and upload to Supabase Storage
-log "Processing Instagram images..."
+echo "Processing Instagram images..."
 if [ -n "$SUPABASE_SERVICE_KEY" ]; then
-    python3 ./scripts/process-instagram-images.py --limit 20 2>&1 | tee -a "$LOG_FILE" || log "Warning: image processing failed"
+    python3 ./scripts/process-instagram-images.py --limit 20 2>&1 || echo "Warning: image processing failed"
 else
-    log "Skipping image processing (SUPABASE_SERVICE_KEY not set)"
+    echo "Skipping image processing (SUPABASE_SERVICE_KEY not set)"
 fi
 
 # Get new listings count
@@ -88,10 +78,10 @@ listings = get_new_listings()
 print(len(listings))
 ")
 
-log "New listings found: $NEW_COUNT"
+echo "New listings found: $NEW_COUNT"
 
 if [ "$NEW_COUNT" -gt 0 ]; then
-    log "Formatting and outputting new listings..."
+    echo "Formatting and outputting new listings..."
     # Output formatted listings for notification
     python3 -c "
 import sys
@@ -110,4 +100,4 @@ mark_sent(ids)
 "
 fi
 
-log "=== Scrape complete ==="
+echo "=== Scrape complete ==="
