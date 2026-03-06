@@ -27,7 +27,6 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
     min_bedrooms: searchParams.get('min_bedrooms') || '',
     min_sqm: searchParams.get('min_sqm') || '',
     max_sqm: searchParams.get('max_sqm') || '',
-    price_changed: searchParams.get('price_changed') === 'true',
   });
 
   const [priceRange, setPriceRange] = useState([
@@ -46,7 +45,6 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
     if (filters.min_bedrooms) params.set('min_bedrooms', filters.min_bedrooms);
     if (filters.min_sqm) params.set('min_sqm', filters.min_sqm);
     if (filters.max_sqm) params.set('max_sqm', filters.max_sqm);
-    if (filters.price_changed) params.set('price_changed', 'true');
     
     router.push(`/buscar?${params.toString()}`);
   };
@@ -61,16 +59,13 @@ export function SearchFilters({ compact = false }: SearchFiltersProps) {
       min_bedrooms: '',
       min_sqm: '',
       max_sqm: '',
-      price_changed: false,
     });
     setPriceRange([0, 500000]);
     router.push('/buscar');
   };
 
-  const activeFiltersCount = Object.entries(filters).filter(([k, v]) => {
-    if (k === 'price_changed') return v === true;
-    return Boolean(v);
-  }).length + (priceRange[0] > 0 || priceRange[1] < 500000 ? 1 : 0);
+  const activeFiltersCount = Object.values(filters).filter(v => v).length + 
+    (priceRange[0] > 0 || priceRange[1] < 500000 ? 1 : 0);
 
   // Compact version for homepage
   if (compact) {
@@ -211,7 +206,6 @@ type FiltersState = {
   min_bedrooms: string;
   min_sqm: string;
   max_sqm: string;
-  price_changed: boolean;
 };
 
 interface FilterContentProps {
@@ -337,20 +331,6 @@ function FilterContent({ filters, setFilters, priceRange, setPriceRange }: Filte
             onChange={(e) => setFilters(prev => ({ ...prev, max_sqm: e.target.value }))}
           />
         </div>
-      </div>
-
-      {/* Price Changed Filter */}
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="price_changed"
-          checked={filters.price_changed}
-          onChange={(e) => setFilters(prev => ({ ...prev, price_changed: e.target.checked }))}
-          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-        />
-        <label htmlFor="price_changed" className="text-sm font-medium cursor-pointer">
-          📉 Solo con cambio de precio
-        </label>
       </div>
     </div>
   );

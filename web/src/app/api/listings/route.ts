@@ -14,7 +14,6 @@ interface QueryParams {
   min_bedrooms?: number;
   min_sqm?: number;
   max_sqm?: number;
-  price_changed?: boolean;
   sort_by?: string;
   page?: number;
   limit?: number;
@@ -39,7 +38,6 @@ export async function GET(request: NextRequest) {
       min_bedrooms: searchParams.get('min_bedrooms') ? parseInt(searchParams.get('min_bedrooms')!) : undefined,
       min_sqm: searchParams.get('min_sqm') ? parseInt(searchParams.get('min_sqm')!) : undefined,
       max_sqm: searchParams.get('max_sqm') ? parseInt(searchParams.get('max_sqm')!) : undefined,
-      price_changed: searchParams.get('price_changed') === 'true',
       sort_by: searchParams.get('sort_by') || 'date_desc',
       page: searchParams.get('page') ? parseInt(searchParams.get('page')!) : 1,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 20,
@@ -99,10 +97,6 @@ export async function GET(request: NextRequest) {
     if (params.max_sqm) {
       whereClause += ' AND sqm <= ?';
       queryParams.push(params.max_sqm);
-    }
-    
-    if (params.price_changed) {
-      whereClause += ' AND original_price IS NOT NULL AND original_price != price_usd';
     }
     
     // Sort
