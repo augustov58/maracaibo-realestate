@@ -13,10 +13,10 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Self-hosted Postiz (localhost:4200)
+# Self-hosted Postiz via Cloudflare Tunnel
 API_KEY = "7073e9f6b60c01982bace378a2c44b7914a3c9330ab06871fd2e8d068b9ff623"
 INSTAGRAM_ID = "cmmpto5rh0001pe9njt0sgpga"
-POSTIZ_BASE_URL = "http://localhost:4200/api"
+POSTIZ_BASE_URL = "https://postiz.avtools.us/api"  # Public URL so Instagram can fetch images
 DB_PATH = Path(__file__).parent.parent / "data" / "listings.db"
 
 
