@@ -2,6 +2,10 @@
 """
 Web scraper for Maracaibo real estate websites.
 Uses requests with proper headers to avoid bot detection.
+
+TEMPORARY: regaladogroup.net SSL cert expired 2026-03-27
+- fetch_page() uses verify=False for regaladogroup.net until cert renewed
+- Remove this workaround when cert is renewed
 """
 
 import os
@@ -70,7 +74,10 @@ def fetch_page(url, retries=3):
     """Fetch a page with proper headers and retry logic."""
     for attempt in range(retries):
         try:
-            response = requests.get(url, headers=HEADERS, timeout=30)
+            # Temporary SSL workaround for expired certificates
+            # regaladogroup.net cert expired 2026-03-27
+            verify_ssl = 'regaladogroup.net' not in url
+            response = requests.get(url, headers=HEADERS, timeout=30, verify=verify_ssl)
             if response.status_code == 200:
                 return response.text
             elif response.status_code == 403:

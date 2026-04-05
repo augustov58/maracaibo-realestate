@@ -6,6 +6,7 @@ Handles storage, deduplication, and queries.
 
 import sqlite3
 import json
+import re
 from pathlib import Path
 from datetime import datetime
 
@@ -235,49 +236,104 @@ def get_stats() -> dict:
     return stats
 
 def format_listing_telegram(listing: dict) -> str:
-    """Format a listing for Telegram - compact format with clickable links"""
-    emoji = {
-        'casa': '🏠', 
-        'apartamento': '🏢', 
-        'townhouse': '🏘️', 
-        'terreno': '🏗️',
-        'comercial': '🏪'
-    }.get(listing.get('property_type'), '🏠')
+    """Format a listing for Telegram - detailed format with full info"""
+    # Property type and emoji
+    prop_type = listing.get('property_type') or ''
+    emoji_map = {
+        'casa': '🏠 Casa', 
+        'apartamento': '🏢 Apartamento', 
+        'townhouse': '🏘️ Townhouse', 
+        'terreno': '🏗️ Terreno',
+        'comercial': '🏪 Comercial'
+    }
+    emoji_line = emoji_map.get(prop_type, '🏠 Inmueble')
+    
+    # Location
+    loc = listing.get('location', '') or ''
+    loc = loc.replace('Maracaibo - ', '').replace('Maracaibo', 'Mcbo')
     
     # Price
-    price = f"${listing['price_usd']:,.0f}" if listing.get('price_usd') else ''
+    price = f"💰 ${listing['price_usd']:,.0f}" if listing.get('price_usd') else ''
     
-    # Location - shorten Maracaibo
-    loc = listing.get('location', '')
+    # Build header
+    header_parts = [emoji_line]
     if loc:
-        loc = loc.replace('Maracaibo - ', '').replace('Maracaibo', 'Mcbo')
-        if len(loc) > 25:
-            loc = loc[:22] + '...'
+        header_parts.append(f"📍 {loc}")
+    if price:
+        header_parts.append(price)
     
-    # Details compact: 3h|2b|120m²
+    header = ' | '.join(header_parts)
+    
+    # Details line
     details = []
     if listing.get('bedrooms'):
-        details.append(f"{int(listing['bedrooms'])}h")
+        details.append(f"🛏 {int(listing['bedrooms'])} hab")
     if listing.get('bathrooms'):
-        details.append(f"{int(listing['bathrooms'])}b")
+        details.append(f"🚿 {int(listing['bathrooms'])} baños")
     if listing.get('sqm'):
-        details.append(f"{int(listing['sqm'])}m²")
-    details_str = '|'.join(details)
+        details.append(f"📐 {int(listing['sqm'])} m²")
+    details_line = ' | '.join(details) if details else ''
     
-    # Build line: emoji $price - Location | details → [Ver](url)
-    parts = [emoji]
-    if price:
-        parts.append(price)
-    if loc:
-        parts.append(f"- {loc}")
-    if details_str:
-        parts.append(f"| {details_str}")
+    # Extract description from text
+    text = listing.get('text', '') or ''
+    desc = ''
+    if text:
+        # Remove URLs
+        desc = re.sub(r'https?://\S+', '', text)
+        # Remove extra whitespace
+        desc = ' '.join(desc.split())
+        
+        # Clean up common patterns from scraped data
+        # Remove "Activo En venta" prefix
+        desc = re.sub(r'^Activo\s*En\s*venta\s*', '', desc, flags=re.IGNORECASE)
+        # Remove "Ver listado" suffix
+        desc = re.sub(r'\s*Ver\s+listado\s*$', '', desc, flags=re.IGNORECASE)
+        # Remove trailing prices like "170,000.00 $"
+        desc = re.sub(r'[\d.,]+\s*\$\s*$', '', desc)
+        # Remove "Año de construcción: YYYY" patterns
+        desc = re.sub(r'Año\s+de\s+construcción:\s*\d+\s*', '', desc, flags=re.IGNORECASE)
+        # Remove "mts2" and similar
+        desc = re.sub(r'\b\d+\s*(?:mts2|m2|m²|metros)\b', '', desc, flags=re.IGNORECASE)
+        # Remove "Habitaciones: X" patterns
+        desc = re.sub(r'Habitaciones?:\s*\d+\s*', '', desc, flags=re.IGNORECASE)
+        # Remove "Baños: X" patterns  
+        desc = re.sub(r'Baños?:\s*\d+\s*', '', desc, flags=re.IGNORECASE)
+        # Remove "Verlistado" if stuck together
+        desc = re.sub(r'Verlistado', '', desc)
+        # Remove "..." at end if just truncation marker
+        desc = re.sub(r'\.{3,}\s*$', '', desc)
+        # Clean up "Aparta..." type truncations
+        desc = re.sub(r' aparta\.\.\.', '...', desc, flags=re.IGNORECASE)
+        
+        # Clean up extra spaces again
+        desc = ' '.join(desc.split())
+        
+        # Truncate if too long
+        if len(desc) > 250:
+            desc = desc[:247] + '...'
     
+    # Author/contact if available
+    author = listing.get('author', '')
+    author_line = ''
+    if author and len(author) > 2:
+        author_line = f"📎 {author}"
+    
+    # URL
     url = listing.get('url', '')
-    if url:
-        parts.append(f"→ [Ver]({url})")
+    link_line = f"🔗 {url}" if url else ''
     
-    return ' '.join(parts)
+    # Build final message
+    lines = [header]
+    if details_line:
+        lines.append(details_line)
+    if desc:
+        lines.append(f"📝 {desc}")
+    if author_line:
+        lines.append(author_line)
+    if link_line:
+        lines.append(link_line)
+    
+    return '\n'.join(lines)
 
 
 if __name__ == '__main__':
