@@ -350,7 +350,7 @@ def process_file(json_path: Path) -> tuple:
         url = processed.get('url', '')
         
         # Filter out old Instagram posts (shortCode starting with 'C' = 2024 or earlier)
-        if 'instagram.com/p/C' in url:
+        if url and 'instagram.com/p/C' in url:
             skipped += 1
             continue
         
